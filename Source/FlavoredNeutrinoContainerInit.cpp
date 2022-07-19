@@ -1,6 +1,7 @@
 #include "FlavoredNeutrinoContainer.H"
  #include "Constants.H"
 #include <random>
+#include <cmath>
 
 using namespace amrex;
 
@@ -46,7 +47,7 @@ Gpu::ManagedVector<GpuArray<Real,3> > uniform_sphere_xyz(int nphi_at_equator){
 Real minerbo_residual(const Real fluxfac, const Real Z){
 	return fluxfac - 1.0/std::tanh(Z) + 1.0 / Z;
 }
-Real minerbo_residual_derivative(const Real fluxfac, const Real Z){
+Real minerbo_residual_derivative(const Real /* fluxfac */, const Real Z){
 	return 1.0/(std::sinh(Z)*std::sinh(Z)) - 1.0/(Z*Z);
 }
 Real minerbo_Z(const Real fluxfac){
@@ -96,20 +97,22 @@ namespace
         r[2] = (0.5+iz_part)/nz;
     }
 
-    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u) {
+/*  // Commented only to avoid compiler warning -- we currently do not use this function
+    AMREX_GPU_HOST_DEVICE void get_random_direction(Real* u, amrex::RandomEngine const& engine) {
         // Returns components of u normalized so |u| = 1
         // in random directions in 3D space
 
-        Real theta = amrex::Random() * MathConst::pi;       // theta from [0, pi)
-        Real phi   = amrex::Random() * 2.0 * MathConst::pi; // phi from [0, 2*pi)
+        Real theta = amrex::Random(engine) * MathConst::pi;       // theta from [0, pi)
+        Real phi   = amrex::Random(engine) * 2.0 * MathConst::pi; // phi from [0, 2*pi)
 
         u[0] = std::sin(theta) * std::cos(phi);
         u[1] = std::sin(theta) * std::sin(phi);
         u[2] = std::cos(theta);
     }
+*/
 
-  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric){
-    *Usymmetric = 2. * (amrex::Random()-0.5);
+  AMREX_GPU_HOST_DEVICE void symmetric_uniform(Real* Usymmetric, amrex::RandomEngine const& engine){
+    *Usymmetric = 2. * (amrex::Random(engine)-0.5);
   }
 
 // angular structure as determined by the Minerbo closure
@@ -123,6 +126,13 @@ namespace
 		*result *= Z/std::sinh(Z);
   }
 }
+
+// angular structure as determined by the gaussian profile of Martin et al (2019).
+ AMREX_GPU_HOST_DEVICE void gaussian_profile(Real* result, const Real sigma, const Real mu, const Real mu0){
+   Real Ainverse = sigma * std::sqrt(M_PI/2.0) * std::erf(std::sqrt(2)/sigma);
+   Real A = 1.0 / Ainverse;
+   *result = 2.0 * A * std::exp(-(mu-mu0)*(mu-mu0) / (2.0*sigma*sigma));
+ }
 
 FlavoredNeutrinoContainer::
 FlavoredNeutrinoContainer(const Geometry            & a_geom,
@@ -147,11 +157,25 @@ InitParticles(const TestParams* parms)
     const int nlocs_per_cell = AMREX_D_TERM( parms->nppc[0],
                                      *parms->nppc[1],
                                      *parms->nppc[2]);
-    
+
+    // array of direction vectors
     Gpu::ManagedVector<GpuArray<Real,3> > direction_vectors = uniform_sphere_xyz(parms->nphi_equator);
     auto* direction_vectors_p = direction_vectors.dataPtr();
     int ndirs_per_loc = direction_vectors.size();
     amrex::Print() << "Using " << ndirs_per_loc << " directions based on " << parms->nphi_equator << " directions at the equator." << std::endl;
+
+    // array of random numbers, one for each grid cell
+    int nrandom = parms->ncell[0] * parms->ncell[1] * parms->ncell[2];
+    Gpu::ManagedVector<Real> random_numbers(nrandom);
+    if (ParallelDescriptor::IOProcessor()) {
+      RandomEngine engine;
+      for (int i=0; i<nrandom; i++) {
+        symmetric_uniform(&random_numbers[i], engine);
+      }
+    }
+    auto* random_numbers_p = random_numbers.dataPtr();
+    ParallelDescriptor::Bcast(random_numbers_p, random_numbers.size(),
+                              ParallelDescriptor::IOProcessorNumber());
 
     const Real scale_fac = dx[0]*dx[1]*dx[2]/nlocs_per_cell/ndirs_per_loc;
 
@@ -260,8 +284,8 @@ InitParticles(const TestParams* parms)
 	Real domain_length_z = Geom(lev).ProbLength(2);
 
         // Initialize particle data in the particle tile
-        amrex::ParallelFor(tile_box,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        amrex::ParallelForRNG(tile_box,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
             int ix = i - lo.x;
             int iy = j - lo.y;
@@ -313,7 +337,7 @@ InitParticles(const TestParams* parms)
                     p.rdata(PIdx::time) = 0;
 
                     const GpuArray<Real,3> u = direction_vectors_p[i_direction];
-                    //get_random_direction(u);
+                    //get_random_direction(u, engine);
 
 		//=========================//
 		// VACUUM OSCILLATION TEST //
@@ -396,9 +420,9 @@ InitParticles(const TestParams* parms)
 		  // set particle weight such that density is
 		  // 10 dm2 c^4 / (2 sqrt(2) GF E)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
-		  double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
+		  // double omega = dm2*PhysConst::c4 / (2.*p.rdata(PIdx::pupt));
 		  double ndens = 10. * dm2*PhysConst::c4 / (2.*sqrt(2.) * PhysConst::GF * p.rdata(PIdx::pupt));
-		  double mu = sqrt(2.)*PhysConst::GF * ndens;
+		  // double mu = sqrt(2.)*PhysConst::GF * ndens;
 		  p.rdata(PIdx::N) = ndens * scale_fac;
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac;
 		}
@@ -457,15 +481,15 @@ InitParticles(const TestParams* parms)
 
 		  // perturbation parameters
 		  Real lambda = domain_length_z/(Real)parms->st3_wavelength_fraction_of_domain;
-		  Real k = (2.*M_PI) / lambda;
+		  Real nu_k = (2.*M_PI) / lambda;
 
 		  // Set particle flavor
 		  p.rdata(PIdx::f00_Re)    = 1.0;
-		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Re)    = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Im)    = 0.0;
 		  p.rdata(PIdx::f11_Re)    = 0.0;
 		  p.rdata(PIdx::f00_Rebar) = 1.0;
-		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(k*p.pos(2));
+		  p.rdata(PIdx::f01_Rebar) = parms->st3_amplitude*sin(nu_k*p.pos(2));
 		  p.rdata(PIdx::f01_Imbar) = 0.0;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 
@@ -495,7 +519,7 @@ InitParticles(const TestParams* parms)
 		  Real dm2 = (parms->mass2-parms->mass1)*(parms->mass2-parms->mass1); //g^2
 		  Real omega = dm2*PhysConst::c4 / (2.* p.rdata(PIdx::pupt));
 		  Real mu_ndens = sqrt(2.) * PhysConst::GF; // SI potential divided by the number density
-		  Real ndens = (omega+k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
+		  Real ndens = (omega+nu_k*PhysConst::hbarc) / (2.*mu_ndens); // want omega/2mu to be 1
 		  p.rdata(PIdx::N) = ndens * scale_fac * (1. + u[2]);
 		  p.rdata(PIdx::Nbar) = ndens * scale_fac * (1. - u[2]);
 		}
@@ -508,10 +532,10 @@ InitParticles(const TestParams* parms)
 
 		  // Set particle flavor
 		  Real rand1, rand2, rand3, rand4;
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f00_Re)    = 1.0;
 		  p.rdata(PIdx::f01_Re)    = parms->st4_amplitude*rand1;
 		  p.rdata(PIdx::f01_Im)    = parms->st4_amplitude*rand2;
@@ -521,10 +545,10 @@ InitParticles(const TestParams* parms)
 		  p.rdata(PIdx::f01_Imbar) = parms->st4_amplitude*rand4;
 		  p.rdata(PIdx::f11_Rebar) = 0.0;
 #if (NUM_FLAVORS==3)
-		  symmetric_uniform(&rand1);
-		  symmetric_uniform(&rand2);
-		  symmetric_uniform(&rand3);
-		  symmetric_uniform(&rand4);
+		  symmetric_uniform(&rand1, engine);
+		  symmetric_uniform(&rand2, engine);
+		  symmetric_uniform(&rand3, engine);
+		  symmetric_uniform(&rand4, engine);
 		  p.rdata(PIdx::f22_Re)    = 0.0;
 		  p.rdata(PIdx::f22_Rebar) = 0.0;
 		  p.rdata(PIdx::f02_Re)    = parms->st4_amplitude*rand1;
@@ -616,32 +640,127 @@ InitParticles(const TestParams* parms)
 
 		  // random perturbations to the off-diagonals
 		  Real rand;
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f11_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f01_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f11_Rebar));
 #if NUM_FLAVORS==3
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Re)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Im)    = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Re   ) - p.rdata(PIdx::f22_Re   ));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f02_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f00_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Rebar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
-		  symmetric_uniform(&rand);
+		  symmetric_uniform(&rand, engine);
 		  p.rdata(PIdx::f12_Imbar) = parms->st5_amplitude*rand * (p.rdata(PIdx::f11_Rebar) - p.rdata(PIdx::f22_Rebar));
 #endif
+		}
+
+		//============================//
+		// 6 - Code Comparison Random //
+		//============================//
+		else if(parms->simulation_type==6){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(parms->ncell[0] == 1);
+		  AMREX_ASSERT(parms->ncell[1] == 1);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the number of each flavor in this particle.
+		  Real angular_factor;
+		  gaussian_profile(&angular_factor, parms->st6_sigma   , u[2], parms->st6_mu0   );
+		  Real Nnue_thisparticle = parms->st6_nnue*scale_fac * angular_factor;
+		  gaussian_profile(&angular_factor, parms->st6_sigmabar, u[2], parms->st6_mu0bar);
+		  Real Nnua_thisparticle = parms->st6_nnua*scale_fac * angular_factor;
+
+// 		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle;
+
+// 		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = 1;
+		  p.rdata(PIdx::f11_Re)    = 0;
+		  p.rdata(PIdx::f00_Rebar) = 1;
+		  p.rdata(PIdx::f11_Rebar) = 0;
+
+// 		  // random perturbations to the off-diagonals
+		  p.rdata(PIdx::f01_Re) = 0;
+		  p.rdata(PIdx::f01_Im) = 0;
+		  int Nz = parms->ncell[2];
+		  int amax = parms->st6_amax * Nz/2;
+		  for(int a=-amax; a<=amax; a++){
+		    if(a==0) continue;
+		    Real ka = 2.*M_PI * a / parms->Lz;
+		    Real phase = ka*z + 2.*M_PI*random_numbers_p[a+Nz/2];
+		    Real B = parms->st6_amplitude / std::abs(float(a));
+		    p.rdata(PIdx::f01_Re) += 0.5 * B * cos(phase);
+		    p.rdata(PIdx::f01_Im) += 0.5 * B * sin(phase);
+		  }
+
+		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
+		}
+
+		//==============================//
+		// 7 - Code Comparison Gaussian //
+		//==============================//
+		else if(parms->simulation_type==7){
+		  AMREX_ASSERT(NUM_FLAVORS==2);
+		  AMREX_ASSERT(parms->ncell[0] == 1);
+		  AMREX_ASSERT(parms->ncell[1] == 1);
+
+		  // set energy to 50 MeV
+		  p.rdata(PIdx::pupt) = 50. * 1e6*CGSUnitsConst::eV;
+		  p.rdata(PIdx::pupx) = u[0] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupy) = u[1] * p.rdata(PIdx::pupt);
+		  p.rdata(PIdx::pupz) = u[2] * p.rdata(PIdx::pupt);
+		  
+		  // get the number of each flavor in this particle.
+		  Real angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigma   , u[2], parms->st7_mu0   );
+		  Real Nnue_thisparticle = parms->st7_nnue*scale_fac * angular_factor;
+		  gaussian_profile(&angular_factor, parms->st7_sigmabar, u[2], parms->st7_mu0bar);
+		  Real Nnua_thisparticle = parms->st7_nnua*scale_fac * angular_factor;
+
+// 		  // set total number of neutrinos the particle has as the sum of the flavors
+		  p.rdata(PIdx::N   ) = Nnue_thisparticle;
+		  p.rdata(PIdx::Nbar) = Nnua_thisparticle;
+
+// 		  // set on-diagonals to have relative proportion of each flavor
+		  p.rdata(PIdx::f00_Re)    = 1;
+		  p.rdata(PIdx::f11_Re)    = 0;
+		  p.rdata(PIdx::f00_Rebar) = 1;
+		  p.rdata(PIdx::f11_Rebar) = 0;
+
+// 		  // random perturbations to the off-diagonals
+		  p.rdata(PIdx::f01_Re) = 0;
+		  p.rdata(PIdx::f01_Im) = 0;
+		  int Nz = parms->ncell[2];
+		  Real zprime = z - parms->Lz;
+		  Real P1 = parms->st7_amplitude * std::exp(-zprime*zprime/(2.*parms->st7_sigma_pert*parms->st7_sigma_pert));
+		  p.rdata(PIdx::f01_Re) = P1 / 2.0;
+		  p.rdata(PIdx::f01_Im) = 0;
+
+		  // Perturb the antineutrinos in a way that preserves the symmetries of the neutrino hamiltonian
+		  p.rdata(PIdx::f01_Rebar) =  p.rdata(PIdx::f01_Re);
+		  p.rdata(PIdx::f01_Imbar) = -p.rdata(PIdx::f01_Im);
 		}
 
 		else{
@@ -655,7 +774,7 @@ InitParticles(const TestParams* parms)
     }
 
     // get the minimum neutrino energy for calculating the timestep
-    Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
+    Real pupt_min = amrex::ReduceMin(*this, [=] AMREX_GPU_HOST_DEVICE (const FlavoredNeutrinoContainer::ParticleType& p) -> Real { return p.rdata(PIdx::pupt); });
     ParallelDescriptor::ReduceRealMin(pupt_min);
     #include "generated_files/FlavoredNeutrinoContainerInit.cpp_Vvac_fill"
 }
