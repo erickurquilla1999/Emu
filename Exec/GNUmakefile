@@ -1,6 +1,8 @@
 EMU_HOME ?= ../
 AMREX_HOME ?= ../amrex
 
+AMREX_CUDA_ARCH=80
+
 SHAPE_FACTOR_ORDER ?= 2
 NUM_FLAVORS ?= 3
 
@@ -8,10 +10,10 @@ COMP = gnu
 
 DEBUG = FALSE
 
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
-USE_CUDA      = FALSE
+USE_CUDA      = TRUE
 USE_HDF5      = FALSE
 
 TINY_PROFILE  = TRUE
