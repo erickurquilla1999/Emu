@@ -93,6 +93,7 @@ void evolve_flavor(const TestParams* parms)
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
+    FlavoredNeutrinoContainer neutrinos_given(geom, dm, ba);
 
     // Track the Figure of Merit for the simulation
     // defined as number of particles advanced per microsecond of walltime
@@ -109,9 +110,15 @@ void evolve_flavor(const TestParams* parms)
     	neutrinos_old.InitParticles(parms);
     }
 
-    if(parms->do_restart){
+    if(parms->do_max_lyapunov_calculation){
         // perturb the density matrix
     	neutrinos_old.PerturbParticles(parms);
+        RecoverParticles("../"+parms->restart_dir, neutrinos_given, initial_time, initial_step);
+        double ss_diff=neutrinos_old.Compute_State_Space_Diff(parms,neutrinos_given);
+        neutrinos_old.Restart_Perturbation(parms,neutrinos_given,ss_diff);
+        ss_diff=neutrinos_old.Compute_State_Space_Diff(parms,neutrinos_given);
+        amrex::Print() << "Starting with a state space difference vector magnitud " << ss_diff << std::endl;
+
     }
 
     // Copy particles from old data to new data
@@ -158,6 +165,7 @@ void evolve_flavor(const TestParams* parms)
 
     // Create a function to call after every integrator timestep.
     auto post_timestep_fun = [&] () {
+        
         /* Post-timestep function. The integrator new-time data is the latest data available. */
 
         // Get the latest neutrino data
@@ -175,11 +183,14 @@ void evolve_flavor(const TestParams* parms)
         neutrinos.SyncLocation(Sync::PositionToCoordinate);
 
         // Renormalize the neutrino state
-        neutrinos.Renormalize(parms);
+        //neutrinos.Renormalize(parms);
 
         // Get which step the integrator is on
         const int step = integrator.get_step_number();
         const Real time = integrator.get_time();
+
+        int step_ = integrator.get_step_number();
+        Real time_ = integrator.get_time();
 
         amrex::Print() << "Completed time step: " << step << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
 
@@ -195,6 +206,28 @@ void evolve_flavor(const TestParams* parms)
             WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);
         }
 
+        // restart perturbation for maximum lyapunov exponent calculation
+        if (parms->do_max_lyapunov_calculation){
+            if ((step+1) % parms->write_plot_every == 0){        
+                RecoverParticles("../"+amrex::Concatenate("plt", (step+1)), neutrinos_given, time_, step_);
+                double ss_vec_diff=neutrinos.Compute_State_Space_Diff(parms,neutrinos_given);
+                amrex::Print() << "State space difference vector " << ss_vec_diff << std::endl;
+                if (ss_vec_diff>=parms->Upper_Limit_Evolution || ss_vec_diff <=parms->Lower_Limit_Evolution) {
+                    neutrinos.Restart_Perturbation(parms,neutrinos_given,ss_vec_diff);
+                    ss_vec_diff=neutrinos.Compute_State_Space_Diff(parms,neutrinos_given);
+                    amrex::Print() << "Restarting with a state space difference vector magnitud " << ss_vec_diff << std::endl;
+    
+                }
+                else{
+                    if ( (step+1) % parms->Max_Number_Steps ==0) {
+                        neutrinos.Restart_Perturbation(parms,neutrinos_given,ss_vec_diff);    
+                        ss_vec_diff=neutrinos.Compute_State_Space_Diff(parms,neutrinos_given);
+                        amrex::Print() << "Restarting with a state space difference vector magnitud " << ss_vec_diff << std::endl;
+                    }
+                }
+            }
+        }
+        
         // Set the next timestep from the last deposited grid data
         // Note: this won't be the same as the new-time grid data
         // because the last deposit_to_mesh call was at either the old time (forward Euler)
