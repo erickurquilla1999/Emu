@@ -78,6 +78,10 @@ public:
 
     void PerturbParticles(const TestParams* parms);
 
+    void Restart_Perturbation(const TestParams* parms,FlavoredNeutrinoContainer& Other, double ss_vector_diff);
+
+    double Compute_State_Space_Diff(const TestParams* parms,FlavoredNeutrinoContainer& Other);
+
     void SyncLocation(int type);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);

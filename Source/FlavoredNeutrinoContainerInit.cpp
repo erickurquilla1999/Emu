@@ -2,6 +2,8 @@
  #include "Constants.H"
 #include <random>
 #include <cmath>
+#include <list>
+#include <string>
 
 using namespace amrex;
 
@@ -774,7 +776,6 @@ InitParticles(const TestParams* parms)
     #include "generated_files/FlavoredNeutrinoContainerInit.cpp_Vvac_fill"
 }
 
-
 void
 FlavoredNeutrinoContainer::
 PerturbParticles(const TestParams* parms)
@@ -884,4 +885,132 @@ PerturbParticles(const TestParams* parms)
         #endif
         });
     }
+}
+
+double
+FlavoredNeutrinoContainer::
+Compute_State_Space_Diff(const TestParams* parms,FlavoredNeutrinoContainer& given)
+{
+
+	amrex::Print() << "Computing state space difference" << std::endl;
+
+    BL_PROFILE("FlavoredNeutrinoContainer::Compute_State_Space_Diff");
+
+    const int lev = 0;
+
+    const auto dxi = Geom(lev).InvCellSizeArray();
+    const auto plo = Geom(lev).ProbLoArray();
+
+	FNParIter pti1(*this, lev);
+	FNParIter pti2(given, lev);
+
+	double sum_total=0;
+
+    while (pti1.isValid() && pti2.isValid())
+    {
+        const int np  = pti1.numParticles();
+   
+        ParticleType * pstruct1 = &(pti1.GetArrayOfStructs()[0]);
+        ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+		
+		double sum_particles=0;
+
+		for (int i = 0; i < np; i++){
+
+            ParticleType& p1 = pstruct1[i];
+            ParticleType& p2 = pstruct2[i];
+			
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar)),2);
+			sum_particles=sum_particles+pow((p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar)),2);
+
+        }
+
+		sum_total=sum_total+sum_particles;
+
+		++pti1;
+		++pti2;
+    }
+
+	return pow(sum_total,0.5);
+}
+
+void 
+FlavoredNeutrinoContainer::
+Restart_Perturbation(const TestParams* parms,FlavoredNeutrinoContainer& given, double ss_vector_diff)
+{
+	amrex::Print() << "Restarting perturbation amplitud" << std::endl;
+
+    BL_PROFILE("FlavoredNeutrinoContainer::Restart_Perturbation");
+
+    const int lev = 0;
+
+    const auto dxi = Geom(lev).InvCellSizeArray();
+    const auto plo = Geom(lev).ProbLoArray();
+
+	FNParIter pti1(*this, lev);
+	FNParIter pti2(given, lev);
+
+    while (pti1.isValid() && pti2.isValid())
+    {
+        const int np  = pti1.numParticles();
+   
+        ParticleType * pstruct1 = &(pti1.GetArrayOfStructs()[0]);
+        ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+
+		for (int i = 0; i < np; i++){
+
+            ParticleType& p1 = pstruct1[i];
+            ParticleType& p2 = pstruct2[i];
+			
+			p1.rdata(PIdx::f00_Re) = p2.rdata(PIdx::f00_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f01_Re) = p2.rdata(PIdx::f01_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f01_Im) = p2.rdata(PIdx::f01_Im)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im))/ss_vector_diff;
+			p1.rdata(PIdx::f02_Re) = p2.rdata(PIdx::f02_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f02_Im) = p2.rdata(PIdx::f02_Im)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im))/ss_vector_diff;
+			p1.rdata(PIdx::f11_Re) = p2.rdata(PIdx::f11_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f12_Re) = p2.rdata(PIdx::f12_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f12_Im) = p2.rdata(PIdx::f12_Im)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im))/ss_vector_diff;
+			p1.rdata(PIdx::f22_Re) = p2.rdata(PIdx::f22_Re)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re))/ss_vector_diff;
+			p1.rdata(PIdx::f00_Rebar) = p2.rdata(PIdx::f00_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar))/ss_vector_diff;
+			p1.rdata(PIdx::f01_Rebar) = p2.rdata(PIdx::f01_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar))/ss_vector_diff;
+			p1.rdata(PIdx::f01_Imbar) = p2.rdata(PIdx::f01_Imbar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar))/ss_vector_diff;
+			p1.rdata(PIdx::f02_Rebar) = p2.rdata(PIdx::f02_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar))/ss_vector_diff;
+			p1.rdata(PIdx::f02_Imbar) = p2.rdata(PIdx::f02_Imbar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar))/ss_vector_diff;
+			p1.rdata(PIdx::f11_Rebar) = p2.rdata(PIdx::f11_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar))/ss_vector_diff;
+			p1.rdata(PIdx::f12_Rebar) = p2.rdata(PIdx::f12_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar))/ss_vector_diff;
+			p1.rdata(PIdx::f12_Imbar) = p2.rdata(PIdx::f12_Imbar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar))/ss_vector_diff;
+			p1.rdata(PIdx::f22_Rebar) = p2.rdata(PIdx::f22_Rebar)+parms->Perturbation_Amplitud*(p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar))/ss_vector_diff;
+
+			// normalizing the diagonal component of the density matrix
+			
+			p1.rdata(PIdx::f00_Re) = p1.rdata(PIdx::f00_Re)/(p1.rdata(PIdx::f00_Re)+p1.rdata(PIdx::f11_Re)+p1.rdata(PIdx::f22_Re));
+			p1.rdata(PIdx::f11_Re) = p1.rdata(PIdx::f11_Re)/(p1.rdata(PIdx::f00_Re)+p1.rdata(PIdx::f11_Re)+p1.rdata(PIdx::f22_Re));
+			p1.rdata(PIdx::f22_Re) = p1.rdata(PIdx::f22_Re)/(p1.rdata(PIdx::f00_Re)+p1.rdata(PIdx::f11_Re)+p1.rdata(PIdx::f22_Re));
+
+			p1.rdata(PIdx::f00_Rebar) = p1.rdata(PIdx::f00_Rebar)/(p1.rdata(PIdx::f00_Rebar)+p1.rdata(PIdx::f11_Rebar)+p1.rdata(PIdx::f22_Rebar));
+			p1.rdata(PIdx::f11_Rebar) = p1.rdata(PIdx::f11_Rebar)/(p1.rdata(PIdx::f00_Rebar)+p1.rdata(PIdx::f11_Rebar)+p1.rdata(PIdx::f22_Rebar));
+			p1.rdata(PIdx::f22_Rebar) = p1.rdata(PIdx::f22_Rebar)/(p1.rdata(PIdx::f00_Rebar)+p1.rdata(PIdx::f11_Rebar)+p1.rdata(PIdx::f22_Rebar));
+			
+        }
+
+		++pti1;
+		++pti2;
+    
+	}
 }
