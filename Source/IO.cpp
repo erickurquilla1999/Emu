@@ -47,6 +47,8 @@ RecoverParticles (const std::string& dir,
     // load the metadata from this plotfile
     PlotFileData plotfile(dir);
 
+  Real time_lyapunov=time;
+
 	// get the time at which to restart
 	time = plotfile.time();
 
@@ -59,7 +61,9 @@ RecoverParticles (const std::string& dir,
 	neutrinos.Restart(dir, file);
 
 	// print the step/time for the restart
-	amrex::Print() << "Restarting after time step: " << step-1 << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+  if (time_lyapunov==0.0){
+    amrex::Print() << "Restarting after time step: " << step-1 << " t = " << time << " s.  ct = " << PhysConst::c * time << " cm" << std::endl;
+  }
 }
 
 

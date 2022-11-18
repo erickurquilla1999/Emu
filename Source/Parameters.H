@@ -34,11 +34,11 @@ struct TestParams : public amrex::Gpu::Managed
     Real deltaCP; // CP violating phases in radians
 
     //perturbation to density matrix parameters
-    Real Perturbation_Amplitud;
-    int Max_Number_Steps;
-    Real Upper_Limit_Evolution;
-    Real Lower_Limit_Evolution;
-    int do_max_lyapunov_calculation;
+    Real Perturbation_Amplitud_Lyapunov;
+    int Max_Steps_Lyapunov;
+    Real Upper_Limit_Lyapunov;
+    Real Lower_Limit_Lyapunov;
+    int do_Lyapunov;
 
     // simulation_type==3
     int st3_wavelength_fraction_of_domain;
@@ -106,11 +106,11 @@ struct TestParams : public amrex::Gpu::Managed
         alpha1 *= M_PI/180.;
 
         // perturbation parameters
-        pp.get("do_max_lyapunov_calculation", do_max_lyapunov_calculation);
-        pp.get("Perturbation_Amplitud", Perturbation_Amplitud);
-        pp.get("Max_Number_Steps", Max_Number_Steps);
-        pp.get("Upper_Limit_Evolution", Upper_Limit_Evolution);
-        pp.get("Lower_Limit_Evolution", Lower_Limit_Evolution);
+        pp.get("do_Lyapunov", do_Lyapunov);
+        pp.get("Perturbation_Amplitud_Lyapunov", Perturbation_Amplitud_Lyapunov);
+        pp.get("Max_Steps_Lyapunov", Max_Steps_Lyapunov);
+        pp.get("Upper_Limit_Lyapunov", Upper_Limit_Lyapunov);
+        pp.get("Lower_Limit_Lyapunov", Lower_Limit_Lyapunov);
 
         if(NUM_FLAVORS>=2){
         	pp.get("mass3_eV", mass3);

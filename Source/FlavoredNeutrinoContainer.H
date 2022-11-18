@@ -76,11 +76,11 @@ public:
 
     void InitParticles(const TestParams* parms);
 
-    void PerturbParticles(const TestParams* parms);
+    void PerturbParticlesLyapunov(const TestParams* parms);
 
-    void Restart_Perturbation(const TestParams* parms,FlavoredNeutrinoContainer& Other, double ss_vector_diff);
+    void RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& Other, double ss_vector_diff);
 
-    double Compute_State_Space_Diff(const TestParams* parms,FlavoredNeutrinoContainer& Other);
+    double ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& Other);
 
     void SyncLocation(int type);
 
