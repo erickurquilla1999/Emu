@@ -54,8 +54,12 @@ write_plot_particles_every = 0
 do_restart = 0
 restart_dir = ""
 
-# perturbations parameters
-Perturbation_Amplitud  = 0.0
+# chaos analysis parameter
+do_max_lyapunov_calculation = 1
+Max_Number_Steps = 200
+Perturbation_Amplitud  = 1e-6
+Upper_Limit_Evolution = 1e-3
+Lower_Limit_Evolution = 1e-8
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
