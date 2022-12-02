@@ -904,63 +904,100 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 	
 	for (pti1; pti1.isValid(); ++pti1){
 
-		const int np1  = pti1.numParticles();
-		
+		// finding matching pti
+
 		ParticleType * pstruct1 = &(pti1.GetArrayOfStructs()[0]);
+		ParticleType& p1 = pstruct1[0];
 
-		for (int i = 0; i < np1; i++){
-
-			ParticleType& p1 = pstruct1[i];
+		FNParIter pti2(given, lev);
 		
-			FNParIter pti2(given, lev);
+		int pti_found=0;
+
+		for (pti2; pti2.isValid(); ++pti2){
+
+			const int np2  = pti2.numParticles();
+			ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
 			
-			int errorfound=0;
+			for (int j = 0; j < np2; j++){
 
-			for (pti2; pti2.isValid(); ++pti2){
+				ParticleType& p2 = pstruct2[j];
 
-				const int np2  = pti2.numParticles();
-
-		    	ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
-				
-				for (int j = 0; j < np2; j++){
-		
-					ParticleType& p2 = pstruct2[j];
-
-					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
-
-						errorfound=1; 
-				
-						sum_particles += pow((p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im)),2);
-						sum_particles += pow((p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im)),2);
-						sum_particles += pow((p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im)),2);
-						sum_particles += pow((p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re)),2);
-						sum_particles += pow((p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar)),2);
-						sum_particles += pow((p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar)),2);
-
-					}	
-				}
+				if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+					pti_found=1;
+					break;
+				}	
 			}
 
-			if (errorfound=0){
+			if (pti_found){
+				break;
+			}
+		}
+
+		// computing the magnitud of diference of the state space vector 
+
+		const int np1  = pti1.numParticles();
+		const int np2  = pti2.numParticles();
+		ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+
+		for (int i = 0; i < np1; i++){
+				
+			ParticleType& p1 = pstruct1[i];
+
+			int par_found=0;
+
+			for (int j = 0; j < np2; j++){
+			
+				ParticleType& p2 = pstruct2[j];
+
+				if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+					
+					par_found=1;
+
+					sum_particles += pow((p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im)),2);
+					sum_particles += pow((p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im)),2);
+					sum_particles += pow((p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im)),2);
+					sum_particles += pow((p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re)),2);
+					sum_particles += pow((p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar)),2);
+					sum_particles += pow((p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar)),2);
+					
+					break;
+				}
+
+			}
+
+			if (par_found==0){
 				amrex::Print() <<"error: particle not found"<< std::endl;
 			}
 		}
 	}
-
 	return pow(sum_particles,0.5);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void 
 FlavoredNeutrinoContainer::
@@ -974,72 +1011,97 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 
 		const auto dxi = Geom(lev).InvCellSizeArray();
 		const auto plo = Geom(lev).ProbLoArray();
-
+		
 		FNParIter pti1(*this, lev);
 		
 		for (pti1; pti1.isValid(); ++pti1){
 
-			const int np1  = pti1.numParticles();
-			
+			// finding matching pti
+
 			ParticleType * pstruct1 = &(pti1.GetArrayOfStructs()[0]);
+			ParticleType& p1 = pstruct1[0];
+
+			FNParIter pti2(given, lev);
+			
+			int pti_found=0;
+
+			for (pti2; pti2.isValid(); ++pti2){
+
+				const int np2  = pti2.numParticles();
+				ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+				
+				for (int j = 0; j < np2; j++){
+
+					ParticleType& p2 = pstruct2[j];
+
+					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+						pti_found=1;
+						break;
+					}	
+				}
+
+				if (pti_found){
+					break;
+				}
+			}
+
+			// renormalizing the state space vector 
+
+			const int np1  = pti1.numParticles();
+			const int np2  = pti2.numParticles();
+			ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
 
 			for (int i = 0; i < np1; i++){
-
-				ParticleType& p1 = pstruct1[i];
-			
-				FNParIter pti2(given, lev);
-				
-				int errorfound=0;
-
-				for (pti2; pti2.isValid(); ++pti2){
-
-					const int np2  = pti2.numParticles();
-
-					ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
 					
-					for (int j = 0; j < np2; j++){
-			
-						ParticleType& p2 = pstruct2[j];
+				ParticleType& p1 = pstruct1[i];
 
-						if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+				int par_found=0;
 
-							errorfound=1; 
+				for (int j = 0; j < np2; j++){
+				
+					ParticleType& p2 = pstruct2[j];
 
-							p1.rdata(PIdx::f00_Re) = p2.rdata(PIdx::f00_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f01_Re) = p2.rdata(PIdx::f01_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f01_Im) = p2.rdata(PIdx::f01_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im))/ss_vector_diff;
-							p1.rdata(PIdx::f02_Re) = p2.rdata(PIdx::f02_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f02_Im) = p2.rdata(PIdx::f02_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im))/ss_vector_diff;
-							p1.rdata(PIdx::f11_Re) = p2.rdata(PIdx::f11_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f12_Re) = p2.rdata(PIdx::f12_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f12_Im) = p2.rdata(PIdx::f12_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im))/ss_vector_diff;
-							p1.rdata(PIdx::f22_Re) = p2.rdata(PIdx::f22_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re))/ss_vector_diff;
-							p1.rdata(PIdx::f00_Rebar) = p2.rdata(PIdx::f00_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar))/ss_vector_diff;
-							p1.rdata(PIdx::f01_Rebar) = p2.rdata(PIdx::f01_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar))/ss_vector_diff;
-							p1.rdata(PIdx::f01_Imbar) = p2.rdata(PIdx::f01_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar))/ss_vector_diff;
-							p1.rdata(PIdx::f02_Rebar) = p2.rdata(PIdx::f02_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar))/ss_vector_diff;
-							p1.rdata(PIdx::f02_Imbar) = p2.rdata(PIdx::f02_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar))/ss_vector_diff;
-							p1.rdata(PIdx::f11_Rebar) = p2.rdata(PIdx::f11_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar))/ss_vector_diff;
-							p1.rdata(PIdx::f12_Rebar) = p2.rdata(PIdx::f12_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar))/ss_vector_diff;
-							p1.rdata(PIdx::f12_Imbar) = p2.rdata(PIdx::f12_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar))/ss_vector_diff;
-							p1.rdata(PIdx::f22_Rebar) = p2.rdata(PIdx::f22_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar))/ss_vector_diff;
+					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
 
-							double traza=p1.rdata(PIdx::f00_Re)+p1.rdata(PIdx::f11_Re)+p1.rdata(PIdx::f22_Re);
-							if (traza<0.99 || traza>1.01){
-								amrex::Print() << "traza error: " << traza << std::endl;
-							}
-							
-							double trazabar=p1.rdata(PIdx::f00_Rebar)+p1.rdata(PIdx::f11_Rebar)+p1.rdata(PIdx::f22_Rebar);
-							if (trazabar<0.99 || trazabar>1.01){
-								amrex::Print() << "trazabar error: " << trazabar << std::endl;
-							}
-						}	
+						par_found=1;
+
+						p1.rdata(PIdx::f00_Re) = p2.rdata(PIdx::f00_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f00_Re)-p2.rdata(PIdx::f00_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f01_Re) = p2.rdata(PIdx::f01_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Re)-p2.rdata(PIdx::f01_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f01_Im) = p2.rdata(PIdx::f01_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Im)-p2.rdata(PIdx::f01_Im))/ss_vector_diff;
+						p1.rdata(PIdx::f02_Re) = p2.rdata(PIdx::f02_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Re)-p2.rdata(PIdx::f02_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f02_Im) = p2.rdata(PIdx::f02_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Im)-p2.rdata(PIdx::f02_Im))/ss_vector_diff;
+						p1.rdata(PIdx::f11_Re) = p2.rdata(PIdx::f11_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f11_Re)-p2.rdata(PIdx::f11_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f12_Re) = p2.rdata(PIdx::f12_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Re)-p2.rdata(PIdx::f12_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f12_Im) = p2.rdata(PIdx::f12_Im)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Im)-p2.rdata(PIdx::f12_Im))/ss_vector_diff;
+						p1.rdata(PIdx::f22_Re) = p2.rdata(PIdx::f22_Re)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f22_Re)-p2.rdata(PIdx::f22_Re))/ss_vector_diff;
+						p1.rdata(PIdx::f00_Rebar) = p2.rdata(PIdx::f00_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f00_Rebar)-p2.rdata(PIdx::f00_Rebar))/ss_vector_diff;
+						p1.rdata(PIdx::f01_Rebar) = p2.rdata(PIdx::f01_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Rebar)-p2.rdata(PIdx::f01_Rebar))/ss_vector_diff;
+						p1.rdata(PIdx::f01_Imbar) = p2.rdata(PIdx::f01_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f01_Imbar)-p2.rdata(PIdx::f01_Imbar))/ss_vector_diff;
+						p1.rdata(PIdx::f02_Rebar) = p2.rdata(PIdx::f02_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Rebar)-p2.rdata(PIdx::f02_Rebar))/ss_vector_diff;
+						p1.rdata(PIdx::f02_Imbar) = p2.rdata(PIdx::f02_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f02_Imbar)-p2.rdata(PIdx::f02_Imbar))/ss_vector_diff;
+						p1.rdata(PIdx::f11_Rebar) = p2.rdata(PIdx::f11_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f11_Rebar)-p2.rdata(PIdx::f11_Rebar))/ss_vector_diff;
+						p1.rdata(PIdx::f12_Rebar) = p2.rdata(PIdx::f12_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Rebar)-p2.rdata(PIdx::f12_Rebar))/ss_vector_diff;
+						p1.rdata(PIdx::f12_Imbar) = p2.rdata(PIdx::f12_Imbar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f12_Imbar)-p2.rdata(PIdx::f12_Imbar))/ss_vector_diff;
+						p1.rdata(PIdx::f22_Rebar) = p2.rdata(PIdx::f22_Rebar)+parms->Perturbation_Amplitud_Lyapunov*(p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar))/ss_vector_diff;
+
+						double traza=p1.rdata(PIdx::f00_Re)+p1.rdata(PIdx::f11_Re)+p1.rdata(PIdx::f22_Re);
+						if (traza<0.99 || traza>1.01){
+							amrex::Print() << "traza error: " << traza << std::endl;
+						}
+						
+						double trazabar=p1.rdata(PIdx::f00_Rebar)+p1.rdata(PIdx::f11_Rebar)+p1.rdata(PIdx::f22_Rebar);
+						if (trazabar<0.99 || trazabar>1.01){
+							amrex::Print() << "trazabar error: " << trazabar << std::endl;
+						}
+
+						break;
 					}
 				}
 
-				if (errorfound=0){
+				if (par_found==0){
 					amrex::Print() <<"error: particle not found"<< std::endl;
 				}
+
 			}
 		}
 	}else{
