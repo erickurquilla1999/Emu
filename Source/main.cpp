@@ -103,11 +103,7 @@ void evolve_flavor(const TestParams* parms)
     Real initial_time = 0.0;
     int initial_step = 0;
     if(parms->do_restart){
-        // if do_Lyapunov is true copy the initial directory of the given trajectory
-        if (parms->do_Lyapunov){
-            std::filesystem::copy("../"+parms->restart_dir, "./"+parms->restart_dir, std::filesystem::copy_options::recursive);
-        }
-        // get particle data from file
+	// get particle data from file
         RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
     }
     else{

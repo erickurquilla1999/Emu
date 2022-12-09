@@ -10,7 +10,7 @@ COMP = gnu
 
 DEBUG = FALSE
 
-USE_MPI       = FALSE
+USE_MPI       = TRUE
 USE_OMP       = FALSE
 USE_ACC       = FALSE
 USE_CUDA      = TRUE
