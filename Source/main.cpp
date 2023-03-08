@@ -141,7 +141,7 @@ void evolve_flavor(const TestParams* parms)
     deposit_to_mesh(neutrinos_old, state, geom);
 
     // Write plotfile after initialization
-    if (not parms->do_restart) {
+    if (not parms->do_restart || parms->do_Lyapunov ) {
         // If we have just initialized, then always save the particle data for reference
         const int write_particles_after_init = 1;
         WritePlotFile(state, neutrinos_old, geom, initial_time, initial_step, write_particles_after_init);
