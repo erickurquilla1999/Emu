@@ -18,7 +18,7 @@ integration.type = 1
 integration.rk.type = 4
 
 # Domain size in 3D index space
-ncell = (1, 1, 256)
+ncell = (1, 1, 1024)
 Lx = 1.0
 Ly = 1.0
 Lz = 64.0
@@ -31,10 +31,10 @@ nphi_equator = 16
 max_grid_size = 16
 
 # Number of steps to run
-nsteps = 5000
+nsteps = 2000
 
 # Simulation end time
-end_time = 5.0e-9
+end_time = 5.0e9
 
 # Make FPE signal errors so we get a Backtrace
 amrex.fpe_trap_invalid=1
@@ -48,18 +48,18 @@ Ye = 1
 write_plot_every = 25
 
 # Write particle data in plotfiles
-write_plot_particles_every = 0
+write_plot_particles_every = 25
 
 # checkpointing
 do_restart = 0
 restart_dir = ""
 
 # chaos analysis parameter
-do_max_lyapunov_calculation = 0
-Max_Number_Steps = 200
-Perturbation_Amplitud  = 1e-6
-Upper_Limit_Evolution = 1e-3
-Lower_Limit_Evolution = 1e-8
+do_Lyapunov = 0
+Max_Steps_Lyapunov = 500
+Perturbation_Amplitud_Lyapunov  = 1e-6
+Upper_Limit_Lyapunov = 1e-4                                                                                                                                                  
+Lower_Limit_Lyapunov = 1e-8        
 
 ###############################
 # NEUTRINO PHYSICS PARAMETERS #
