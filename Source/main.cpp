@@ -103,7 +103,7 @@ void evolve_flavor(const TestParams* parms)
     Real initial_time = 0.0;
     int initial_step = 0;
     if(parms->do_restart){
-	// get particle data from file
+	    // get particle data from file
         RecoverParticles(parms->restart_dir, neutrinos_old, initial_time, initial_step);
     }
     else{
@@ -112,6 +112,7 @@ void evolve_flavor(const TestParams* parms)
     }
 
     if(parms->do_Lyapunov){
+
         MFIter::allowMultipleMFIters(true);
         
         // perturb randomly the density matrix components
@@ -241,6 +242,11 @@ void evolve_flavor(const TestParams* parms)
                     ss_vec_diff_lyapunov=neutrinos.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given);
                     
                     amrex::Print() << "----- State space difference vector: " << ss_vec_diff_lyapunov << std::endl;                
+
+                    //writing the normalized data
+                    int write_plot_particles = parms->write_plot_particles_every > 0 && (step+1) % parms->write_plot_particles_every == 0;
+                    WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);      
+
                 }
             }
         }
