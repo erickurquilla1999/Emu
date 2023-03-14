@@ -788,33 +788,27 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 
 	AMREX_ASSERT(NUM_FLAVORS==3);
 
-    const int lev = 0;
+	using PType = typename FlavoredNeutrinoContainer::ParticleType;
+	Real sum_ss_sqr = amrex::ReduceSum(given,
+		[=] AMREX_GPU_HOST_DEVICE (const PType& p1) -> Real 
+		{ 
+			const int lev = 0;
 
-    const auto dxi = Geom(lev).InvCellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
+			const auto dxi = Geom(lev).InvCellSizeArray();
+			const auto plo = Geom(lev).ProbLoArray();
 
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
+			int par_found=0;
 
-	Real ss_total=0.0;
+			FNParIter pti2(*this, lev);
 
-	FNParIter pti2(given, lev);
+			for (pti2; pti2.isValid(); ++pti2){
 
-	for (pti2; pti2.isValid(); ++pti2){
+				const int np2  = pti2.numParticles();
+				ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
 
-		const int np2  = pti2.numParticles();
-		ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
-
-		for (int j = 0; j < np2; j++){
-			
-			ParticleType& p2 = pstruct2[j];
-
-			using PType = typename FlavoredNeutrinoContainer::ParticleType;
-			Real sum_ss_sqr = amrex::ReduceSum(*this,
-				[=] AMREX_GPU_HOST_DEVICE (const PType& p1) -> Real 
-				{ 
-					int par_found=0;
+				for (int j = 0; j < np2; j++){
+					
+					ParticleType& p2 = pstruct2[j];
 				
 					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
 						
@@ -842,20 +836,15 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 						sum_particles += pow((p1.rdata(PIdx::f22_Rebar)-p2.rdata(PIdx::f22_Rebar)),2);
 						
 						return sum_particles;
-
-					}else{
-
-						return 0.0;
 					}
 				}
-			);
-
-			ParallelDescriptor::ReduceRealSum(sum_ss_sqr);
-
-			ss_total+=sum_ss_sqr;
+			}
+			AMREX_ASSERT(par_found==1);
+			return 0.0;
 		}
-	}
-	return pow(ss_total,0.5);
+	);
+	ParallelDescriptor::ReduceRealSum(sum_ss_sqr);
+	return pow(sum_ss_sqr,0.5);
 }
 
 void 
