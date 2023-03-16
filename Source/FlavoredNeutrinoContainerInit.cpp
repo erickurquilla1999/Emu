@@ -948,3 +948,178 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 		);
 	}
 }
+
+void
+FlavoredNeutrinoContainer::
+TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& given)
+{
+    BL_PROFILE("FlavoredNeutrinoContainer::TestLyapunov");
+
+	AMREX_ASSERT(NUM_FLAVORS==3);
+
+    const int lev = 0;
+
+    const auto dxi = Geom(lev).InvCellSizeArray();
+    const auto plo = Geom(lev).ProbLoArray();
+
+	// given.SortParticlesByCell();
+	// this->SortParticlesByCell();
+	
+	FNParIter pti1(*this, lev);
+	FNParIter pti2(given, lev);
+	
+	int count_plane_yes=0;
+	int count_plane_no=0;
+	int count_plane_index_yes=0;
+	int count_plane_index_no=0;
+	int total_numner_of_particles=0;
+
+	for (pti1; pti1.isValid(); ++pti1){
+
+		ParticleType * pstruct1 = &(pti1.GetArrayOfStructs()[0]);
+		
+		//##############################################################
+		ParticleType& p1 = pstruct1[0];
+
+		int pti_found=0;
+		
+		for (pti2; pti2.isValid(); ++pti2){
+	
+			const int np2  = pti2.numParticles();
+			ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+			
+			for (int j = 0; j < np2; j++){
+				ParticleType& p2 = pstruct2[j];
+				if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+					pti_found=1;
+					break;
+				}	
+			}	
+			if (pti_found){
+				break;
+			}
+		}
+		AMREX_ASSERT(pti_found==1);
+		//##############################################################
+
+		const int np1  = pti1.numParticles();
+		const int np2  = pti2.numParticles();
+
+		AMREX_ASSERT(np1==np2);
+
+		total_numner_of_particles+=np1;		
+
+		ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+
+		for (int j = 0; j < np1; j++){
+
+			ParticleType& p1 = pstruct1[j];
+			ParticleType& p2 = pstruct2[j];
+
+			if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+				if (p2.id()==p1.id()){
+					count_plane_index_yes=count_plane_index_yes+1;
+				}else{
+					count_plane_index_no=count_plane_index_no+1;
+				}
+				count_plane_yes=count_plane_yes+1;
+			}else{
+				count_plane_no=count_plane_no+1;
+			}
+		}	
+	}
+	amrex::Print() << "__________________________________ " << std::endl;  
+	amrex::Print() << "total data test" << std::endl;                              
+	amrex::Print() << "__________________________________ " << std::endl;                
+	amrex::Print() << "total number of particles in the simulation " << total_numner_of_particles << std::endl;               
+	amrex::Print() << "number of particles that match in plane comparison analysis " << count_plane_yes << std::endl;               
+	amrex::Print() << "number of particles that does not match in plane comparison analysis " << count_plane_no << std::endl;               
+	amrex::Print() << "number of particles that match in plane comparison analysis and have the same index " << count_plane_index_yes << std::endl;               
+	amrex::Print() << "number of particles that match in plane comparison analysis but does not have the same index " << count_plane_index_no << std::endl;               
+	amrex::Print() << "__________________________________ " << std::endl;                
+
+	FNParIter pti1_(*this, lev);
+	FNParIter pti2_(given, lev);
+
+	for (pti1_; pti1_.isValid(); ++pti1_){
+
+		ParticleType * pstruct1 = &(pti1_.GetArrayOfStructs()[0]);
+		
+		//##############################################################
+		ParticleType& p1 = pstruct1[0];
+
+		int pti_found=0;
+		
+		for (pti2_; pti2_.isValid(); ++pti2_){
+	
+			const int np2  = pti2_.numParticles();
+			ParticleType * pstruct2 = &(pti2_.GetArrayOfStructs()[0]);
+			
+			for (int j = 0; j < np2; j++){
+				ParticleType& p2 = pstruct2[j];
+				if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+					pti_found=1;
+					break;
+				}	
+			}	
+			if (pti_found){
+				break;
+			}
+		}
+		AMREX_ASSERT(pti_found==1);
+		//##############################################################
+
+		const int np1  = pti1_.numParticles();
+		const int np2  = pti2_.numParticles();
+
+		AMREX_ASSERT(np1==np2);
+
+		ParticleType * pstruct2 = &(pti2_.GetArrayOfStructs()[0]);
+
+		int number_cells_per_tile= parms->max_grid_size; 
+		int number_particles_tile=0;              
+		int number_particle_matched=0;
+		int number_particles_matched_index=0;
+
+		for (int i = 0; i < number_cells_per_tile; i++){
+				
+			int number_particles_per_cell=np1/parms->max_grid_size;
+			int count_twoloop_yes=0;
+			int count_twoloop_index_yes=0;
+			
+			for (int j = 0; j < number_particles_per_cell; j++){
+				for (int k = 0; k < number_particles_per_cell; k++){
+
+					ParticleType& p1 = pstruct1[j+i*number_particles_per_cell];
+					ParticleType& p2 = pstruct2[k+i*number_particles_per_cell];
+						
+					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
+						if (p2.id() == p1.id()){
+							count_twoloop_index_yes+=1;
+							}
+						count_twoloop_yes+=1;	
+					}	
+				}
+			}
+			number_particles_tile=number_particles_tile+number_particles_per_cell;
+			number_particle_matched=number_particle_matched+count_twoloop_yes;
+			number_particles_matched_index=number_particles_matched_index+count_twoloop_index_yes;
+
+			amrex::Print() << "__________________________________ " << std::endl;  
+			amrex::Print() << "data per cell test " << i << std::endl;                              
+			amrex::Print() << "__________________________________ " << std::endl; 
+			amrex::Print() << "number of particles per cell "  << number_particles_per_cell << std::endl;                
+			amrex::Print() << "number of particles per cell matched " << count_twoloop_yes << std::endl;  
+			amrex::Print() << "number of particles per cell matched and have the same index " << count_twoloop_index_yes << std::endl;  
+			amrex::Print() << "__________________________________ " << std::endl; 
+
+		}
+		amrex::Print() << "__________________________________ " << std::endl;  
+		amrex::Print() << "data per tile test" << std::endl;                              
+		amrex::Print() << "__________________________________ " << std::endl; 
+		amrex::Print() << "number of cells per time " << number_cells_per_tile << std::endl;  
+		amrex::Print() << "number of particle per tile " << number_particles_tile << std::endl;  
+		amrex::Print() << "number of particles that matched " << number_particle_matched << std::endl;  
+		amrex::Print() << "number of particle that matched and have same index " << number_particles_matched_index << std::endl;  
+	}
+}

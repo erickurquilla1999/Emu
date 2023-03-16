@@ -82,6 +82,8 @@ public:
 
     double ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& Other);
 
+    void TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& Other);
+
     void SyncLocation(int type);
 
     void UpdateLocationFrom(FlavoredNeutrinoContainer& Other);
