@@ -94,7 +94,6 @@ void evolve_flavor(const TestParams* parms)
     // We store old-time and new-time data
     FlavoredNeutrinoContainer neutrinos_old(geom, dm, ba);
     FlavoredNeutrinoContainer neutrinos_new(geom, dm, ba);
-    FlavoredNeutrinoContainer neutrinos_given(geom, dm, ba);
 
     // Track the Figure of Merit for the simulation
     // defined as number of particles advanced per microsecond of walltime
@@ -119,6 +118,7 @@ void evolve_flavor(const TestParams* parms)
     	neutrinos_old.PerturbParticlesLyapunov(parms);
         
         // reading the the data of the given solution
+        FlavoredNeutrinoContainer neutrinos_given(geom, dm, ba);
         RecoverParticles("../"+parms->restart_dir, neutrinos_given, initial_time, initial_step);
         
         // computing the magnitud of the state space difference vector
@@ -226,20 +226,21 @@ void evolve_flavor(const TestParams* parms)
             if ((step+1) % parms->write_plot_every == 0){        
                 
                 // reading the the data of the given solution
-                RecoverParticles("../"+amrex::Concatenate("plt", (step+1)), neutrinos_given, time_, step_);
+                FlavoredNeutrinoContainer neutrinos_given_(geom, dm, ba);
+                RecoverParticles("../"+amrex::Concatenate("plt", (step+1)), neutrinos_given_, time_, step_);
                 
                 // computing the magnitud of the difference of state space vector
-                double ss_vec_diff_lyapunov=neutrinos.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given);
+                double ss_vec_diff_lyapunov=neutrinos.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given_);
 
                 if (ss_vec_diff_lyapunov>=parms->Upper_Limit_Lyapunov || ss_vec_diff_lyapunov <=parms->Lower_Limit_Lyapunov || (step+1) % parms->Max_Steps_Lyapunov ==0){   
                     amrex::Print() << "----- State space difference vector: " << ss_vec_diff_lyapunov << std::endl;                
                     amrex::Print() << "----- Renormalizing ... " << std::endl;                
 
                     // renormalizing de perturbation size
-                    neutrinos.RenormalizePerturbationLyapunov(parms,neutrinos_given,ss_vec_diff_lyapunov);
+                    neutrinos.RenormalizePerturbationLyapunov(parms,neutrinos_given_,ss_vec_diff_lyapunov);
 
                     // computing the magnitud of the difference of state space vector
-                    ss_vec_diff_lyapunov=neutrinos.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given);
+                    ss_vec_diff_lyapunov=neutrinos.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given_);
                     
                     amrex::Print() << "----- State space difference vector: " << ss_vec_diff_lyapunov << std::endl;                
 
