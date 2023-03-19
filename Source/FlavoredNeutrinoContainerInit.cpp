@@ -892,7 +892,7 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 					break;
 				}	
 			}
-
+			
 			if (pti_found){
 				break;
 			}
@@ -906,8 +906,7 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 			
 		amrex::ParallelFor (np1, 
 			[=] AMREX_GPU_DEVICE (int i) 
-			{
-					
+			{	
 				ParticleType& p1 = pstruct1[i];
 
 				int par_found=0;
@@ -942,7 +941,6 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 						break;
 					}
 				}
-
 				AMREX_ASSERT(par_found==1);
 			}
 		);
@@ -962,8 +960,8 @@ TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& given)
     const auto dxi = Geom(lev).InvCellSizeArray();
     const auto plo = Geom(lev).ProbLoArray();
 
-	// given.SortParticlesByCell();
-	// this->SortParticlesByCell();
+	given.SortParticlesByCell();
+	this->SortParticlesByCell();
 	
 	FNParIter pti1(*this, lev);
 	FNParIter pti2(given, lev);
@@ -1028,15 +1026,17 @@ TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& given)
 			}
 		}	
 	}
-	amrex::Print() << "__________________________________ " << std::endl;  
-	amrex::Print() << "total data test" << std::endl;                              
-	amrex::Print() << "__________________________________ " << std::endl;                
-	amrex::Print() << "total number of particles in the simulation " << total_numner_of_particles << std::endl;               
-	amrex::Print() << "number of particles that match in plane comparison analysis " << count_plane_yes << std::endl;               
-	amrex::Print() << "number of particles that does not match in plane comparison analysis " << count_plane_no << std::endl;               
-	amrex::Print() << "number of particles that match in plane comparison analysis and have the same index " << count_plane_index_yes << std::endl;               
-	amrex::Print() << "number of particles that match in plane comparison analysis but does not have the same index " << count_plane_index_no << std::endl;               
-	amrex::Print() << "__________________________________ " << std::endl;                
+	if (total_numner_of_particles =! count_plane_yes || total_numner_of_particles =! count_plane_index_yes){
+		amrex::Print() << "__________________________________ " << std::endl;  
+		amrex::Print() << "total data test" << std::endl;                              
+		amrex::Print() << "__________________________________ " << std::endl;                
+		amrex::Print() << "total number of particles in the simulation " << total_numner_of_particles << std::endl;               
+		amrex::Print() << "number of particles that match in plane comparison analysis " << count_plane_yes << std::endl;               
+		amrex::Print() << "number of particles that does not match in plane comparison analysis " << count_plane_no << std::endl;               
+		amrex::Print() << "number of particles that match in plane comparison analysis and have the same index " << count_plane_index_yes << std::endl;               
+		amrex::Print() << "number of particles that match in plane comparison analysis but does not have the same index " << count_plane_index_no << std::endl;               
+		amrex::Print() << "__________________________________ " << std::endl;                
+	}
 
 	FNParIter pti1_(*this, lev);
 	FNParIter pti2_(given, lev);
@@ -1105,21 +1105,24 @@ TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& given)
 			number_particle_matched=number_particle_matched+count_twoloop_yes;
 			number_particles_matched_index=number_particles_matched_index+count_twoloop_index_yes;
 
-			amrex::Print() << "__________________________________ " << std::endl;  
-			amrex::Print() << "data per cell test " << i << std::endl;                              
-			amrex::Print() << "__________________________________ " << std::endl; 
-			amrex::Print() << "number of particles per cell "  << number_particles_per_cell << std::endl;                
-			amrex::Print() << "number of particles per cell matched " << count_twoloop_yes << std::endl;  
-			amrex::Print() << "number of particles per cell matched and have the same index " << count_twoloop_index_yes << std::endl;  
-			amrex::Print() << "__________________________________ " << std::endl; 
-
+			if (number_particles_per_cell != count_twoloop_yes || number_particles_per_cell !=count_twoloop_index_yes){
+				amrex::Print() << "__________________________________ " << std::endl;  
+				amrex::Print() << "data per cell test " << i << std::endl;                              
+				amrex::Print() << "__________________________________ " << std::endl; 
+				amrex::Print() << "number of particles per cell "  << number_particles_per_cell << std::endl;                
+				amrex::Print() << "number of particles per cell matched " << count_twoloop_yes << std::endl;  
+				amrex::Print() << "number of particles per cell matched and have the same index " << count_twoloop_index_yes << std::endl;  
+				amrex::Print() << "__________________________________ " << std::endl; 
+			}
 		}
-		amrex::Print() << "__________________________________ " << std::endl;  
-		amrex::Print() << "data per tile test" << std::endl;                              
-		amrex::Print() << "__________________________________ " << std::endl; 
-		amrex::Print() << "number of cells per time " << number_cells_per_tile << std::endl;  
-		amrex::Print() << "number of particle per tile " << number_particles_tile << std::endl;  
-		amrex::Print() << "number of particles that matched " << number_particle_matched << std::endl;  
-		amrex::Print() << "number of particle that matched and have same index " << number_particles_matched_index << std::endl;  
+		if (number_particles_tile != number_particle_matched || number_particles_tile != number_particles_matched_index){
+			amrex::Print() << "__________________________________ " << std::endl;  
+			amrex::Print() << "data per tile test" << std::endl;                              
+			amrex::Print() << "__________________________________ " << std::endl; 
+			amrex::Print() << "number of cells per time " << number_cells_per_tile << std::endl;  
+			amrex::Print() << "number of particle per tile " << number_particles_tile << std::endl;  
+			amrex::Print() << "number of particles that matched " << number_particle_matched << std::endl;  
+			amrex::Print() << "number of particle that matched and have same index " << number_particles_matched_index << std::endl;  
+		}
 	}
 }
