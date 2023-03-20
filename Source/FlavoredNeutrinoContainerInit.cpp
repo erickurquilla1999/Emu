@@ -788,23 +788,25 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 
 	AMREX_ASSERT(NUM_FLAVORS==3);
 
-	using PType = typename FlavoredNeutrinoContainer::ParticleType;
-	Real sum_ss_sqr = amrex::ReduceSum(given,
-		[=] AMREX_GPU_HOST_DEVICE (const PType& p1) -> Real 
-		{ 
-			const int lev = 0;
+	const int lev = 0;
 
-			const auto dxi = Geom(lev).InvCellSizeArray();
-			const auto plo = Geom(lev).ProbLoArray();
+	const auto dxi = Geom(lev).InvCellSizeArray();
+	const auto plo = Geom(lev).ProbLoArray();
 
-			int par_found=0;
+	FNParIter pti2(*this, lev);
 
-			FNParIter pti2(*this, lev);
+	double total_sum=0.0;
 
-			for (pti2; pti2.isValid(); ++pti2){
+	for (pti2; pti2.isValid(); ++pti2){
 
-				const int np2  = pti2.numParticles();
-				ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+		const int np2  = pti2.numParticles();
+		ParticleType * pstruct2 = &(pti2.GetArrayOfStructs()[0]);
+
+		using PType = typename FlavoredNeutrinoContainer::ParticleType;
+		Real sum_ss_sqr = amrex::ReduceSum(given,
+			[=] AMREX_GPU_HOST_DEVICE (const PType& p1) -> Real 
+			{ 
+				int par_found=0;
 
 				for (int j = 0; j < np2; j++){
 					
@@ -838,13 +840,13 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 						return sum_particles;
 					}
 				}
-			}
-			AMREX_ASSERT(par_found==1);
-			return 0.0;
-		}
-	);
-	ParallelDescriptor::ReduceRealSum(sum_ss_sqr);
-	return pow(sum_ss_sqr,0.5);
+				return 0.0;
+			}			
+		);
+		ParallelDescriptor::ReduceRealSum(sum_ss_sqr);
+		total_sum+=sum_ss_sqr;
+	}
+	return pow(total_sum,0.5);
 }
 
 void 
@@ -1026,7 +1028,7 @@ TestLyapunov(const TestParams* parms,FlavoredNeutrinoContainer& given)
 			}
 		}	
 	}
-	if (total_numner_of_particles =! count_plane_yes || total_numner_of_particles =! count_plane_index_yes){
+	if (total_numner_of_particles != count_plane_yes || total_numner_of_particles != count_plane_index_yes){
 		amrex::Print() << "__________________________________ " << std::endl;  
 		amrex::Print() << "total data test" << std::endl;                              
 		amrex::Print() << "__________________________________ " << std::endl;                
