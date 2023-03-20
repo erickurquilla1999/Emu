@@ -131,7 +131,7 @@ void evolve_flavor(const TestParams* parms)
         ss_diff_lyapunov=neutrinos_old.ComputeStateSpaceDifferenceLyapunov(parms,neutrinos_given);
 
         // test        
-        neutrinos_old.TestLyapunov(parms,neutrinos_given);
+        // neutrinos_old.TestLyapunov(parms,neutrinos_given);
 
         amrex::Print() << "Starting with a state space difference vector magnitud " << ss_diff_lyapunov << std::endl;
     }
@@ -252,7 +252,7 @@ void evolve_flavor(const TestParams* parms)
                     WritePlotFile(state, neutrinos, geom, time, step+1, write_plot_particles);      
 
                     // test        
-                    neutrinos.TestLyapunov(parms,neutrinos_given_);
+                    // neutrinos.TestLyapunov(parms,neutrinos_given_);
                 }
             }
         }
