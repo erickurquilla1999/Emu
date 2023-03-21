@@ -796,7 +796,6 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 	FNParIter pti2(*this, lev);
 
 	double total_sum=0.0;
-	double total_particles=0.0; // testing number of particles found
 
 	for (pti2; pti2.isValid(); ++pti2){
 
@@ -846,32 +845,7 @@ ComputeStateSpaceDifferenceLyapunov(const TestParams* parms,FlavoredNeutrinoCont
 		);
 		ParallelDescriptor::ReduceRealSum(sum_ss_sqr);
 		total_sum+=sum_ss_sqr;
-
-		//#################################################################
-		// testing number of particles found
-		using PType = typename FlavoredNeutrinoContainer::ParticleType;
-		Real total_particles_ = amrex::ReduceSum(given,
-			[=] AMREX_GPU_HOST_DEVICE (const PType& p1) -> Real 
-			{ 
-				int par_found=0;
-
-				for (int j = 0; j < np2; j++){
-					
-					ParticleType& p2 = pstruct2[j];
-				
-					if (p1.rdata(PIdx::x)==p2.rdata(PIdx::x) && p1.rdata(PIdx::y)==p2.rdata(PIdx::y) && p1.rdata(PIdx::z)==p2.rdata(PIdx::z) && p1.rdata(PIdx::time)==p2.rdata(PIdx::time) && p1.rdata(PIdx::pupx)==p2.rdata(PIdx::pupx) && p1.rdata(PIdx::pupy)==p2.rdata(PIdx::pupy) && p1.rdata(PIdx::pupz)==p2.rdata(PIdx::pupz) ){
-						return 1.0;
-					}
-				}
-				return 0.0;
-			}			
-		);
-		ParallelDescriptor::ReduceRealSum(total_particles_);
-		total_particles+=total_particles_;
-		//#################################################################
-
 	}
-	amrex::Print() << " >>>>>>>>>>>>> total_num_particles " << total_particles << std::endl; // testing number of particles found
 	return pow(total_sum,0.5);
 }
 
@@ -891,12 +865,12 @@ RenormalizePerturbationLyapunov(const TestParams* parms,FlavoredNeutrinoContaine
 
 	given.SortParticlesByCell();
 	this->SortParticlesByCell();
-
-	FNParIter pti1(*this, lev);
 	
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
+
+	FNParIter pti1(*this, lev);
 
 	for (pti1; pti1.isValid(); ++pti1){
 
